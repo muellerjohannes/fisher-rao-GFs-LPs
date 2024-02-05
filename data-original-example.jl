@@ -15,8 +15,6 @@ nP = nO*nA;
 μ = [0.8, 0.2]
 r = [1. 0.; 2. 0];
 
-# Define a random transition kernel and instantaneous reward function
-    
 # Compute the optimal reward
 rewards_det = zeros(2,2)
 ηDet = zeros(2, 2, 2, 2)
@@ -32,7 +30,7 @@ for i in 1:2
     ηDet_proj[i, j, :] = transpose(Bas) * vec(ηDet[i,j,:,:]) 
     V = valueFunction(π_det, α, γ, r)
     Q = [(1-γ)*r[s,a] + γ * α[:,s,a]'*V for s in 1:nS, a in 1:nA]
-    A = [Q[s,a] - V[s] for s in 1:nS, a in 1:nA]
+    local A = [Q[s,a] - V[s] for s in 1:nS, a in 1:nA]
     advantages[i,j,:,:] = A
     end
 end
@@ -40,9 +38,11 @@ R_opt = maximum(rewards_det)
 R_min = minimum(rewards_det)
 ηDet_proj = reshape(ηDet_proj, (4, 3))
 
+# Define a random transition kernel and instantaneous reward function
+
 # Begin the plot
 begin
-    p_state_action_polytope = scatter(ηDet_proj[:,1], ηDet_proj[:,2], ηDet_proj[:,3], seriestype=:scatter, markersize=3, c=:black)
+    p_state_action_polytope = Plots.scatter(ηDet_proj[:,1], ηDet_proj[:,2], ηDet_proj[:,3], seriestype=:scatter, markersize=3, c=:black)
     p_state_action_polytope = plot(p_state_action_polytope, Bas[[1, 2, 3, 4, 1, 3],1], Bas[[1, 2, 3, 4, 1, 3],2], Bas[[1, 2, 3, 4, 1, 3],3], 
     color=:black, label=false, width=1.2, linestyle=:dash)
     # Computing the state-action frequencies
@@ -58,3 +58,4 @@ begin
     ηAll = reshape(ηAll, ((k+1)^2, 3))
     p_state_action_polytope = plot(p_state_action_polytope, ηAll[:,1], ηAll[:,2], ηAll[:,3],linewidth = 2, label=false, color="black", alpha=0.6)
 end;
+

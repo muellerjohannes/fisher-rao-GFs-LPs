@@ -49,7 +49,7 @@ function softmaxStateActionFrequency(θ, α, γ, μ)
     return η
 end
 
-logLikelihoodsSAF(θ) = log.(softmaxStateActionFrequency(θ, α, γ, μ))
+logLikelihoodsSAF(θ) = log.(vec(softmaxStateActionFrequency(θ, α, γ, μ)))
 jacobianLogLikelihoodsSAF = θ -> ForwardDiff.jacobian(logLikelihoodsSAF, θ)
 
 function morimuraConditioner(θ)
@@ -59,11 +59,12 @@ function morimuraConditioner(θ)
     return G
 end
 
+
 logLikelihoods(θ) = log.(softmaxPolicy(θ))
 jacobianLogLikelihoods = θ -> ForwardDiff.jacobian(logLikelihoods, θ)
 
 function kakadeConditioner(θ)
-    η = vec(softmaxStateActionFrequency(θ, α, γ, μ))
+    η = vec(softmaxStateActionFrequency(θ, α, γ, μ)')
     J = jacobianLogLikelihoods(θ)
     G = [sum(J[:, i].*J[:, j].*η) for i in 1:nP, j in 1:nP]
     return G

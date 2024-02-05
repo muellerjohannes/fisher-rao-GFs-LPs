@@ -3,15 +3,16 @@ using ForwardDiff
 using Plots
 using PlotlySave
 include("utilities.jl")
-include("data-MDP.jl")
-
+# Examples: original and gap
+ex = "original-example"
+include(string("data-", ex, ".jl"))
 
 #Define the parameter policy gradient
 reward(θ) = R(softmaxPolicy(θ), α, γ, μ, r)
 ∇R = θ -> ForwardDiff.gradient(reward, θ)
 
-nTrajectories = 30;
-θ₀ = randn(nTrajectories, nA*nS);
+#nTrajectories = 30;
+#θ₀ = randn(nTrajectories, nA*nS);
 nIterations = 3*10^3;
 
 ### Run state-action NPG
@@ -42,6 +43,12 @@ nIterations = 3*10^3;
     end
 end
 
+θ = randn(nS*nA)
+
+morimuraConditioner(θ)
+
+kakadeConditioner(θ)
+
 title_fontsize, tick_fontsize, legend_fontsize, guide_fontsize = 18, 18, 18, 18;
 
 # Export state-action distribution plot
@@ -53,7 +60,8 @@ begin
     )
     p = plot(p, ηDet_proj[[1, 2, 4, 3, 1],1], ηDet_proj[[1, 2, 4, 3, 1],2], ηDet_proj[[1, 2, 4, 3, 1],3], color="black", width=1.2)
     p = plot(p, Bas[[2, 4],1], Bas[[2, 4],2], Bas[[2, 4],3], color="black", width=1.2, linestyle=:dash)
-    save("graphics/morimura-state-action.pdf", p)
+    #save("graphics/morimura-state-action.pdf", p)
+    save(string("graphics/morimura-state-action-", ex, ".pdf"), p)
 end
 
 # Compute different exponents
@@ -82,5 +90,7 @@ begin
     );
     t = range(minimum(time_Morimura), maximum(time_Morimura), 10)
     p = plot(p, t, exp.(- Δ * t), linewidth = 4, color="black", alpha = 0.5, linestyle=:dash)
-    save("graphics/morimura-gap.pdf", p)
+    p = plot(p, t, exp.(- Δ_M * t), linewidth = 4, color="black", alpha = 0.5, linestyle=:dot)
+    #save("graphics/morimura-gap.pdf", p)
+    save(string("graphics/morimura-gap-", ex, ".pdf"), p)
 end
