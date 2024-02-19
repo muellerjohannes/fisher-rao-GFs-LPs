@@ -1,13 +1,11 @@
-
-
-
 using LinearAlgebra
 using ForwardDiff
 using Plots
 using PlotlySave
 include("utilities.jl")
-include("data-MDP.jl")
+include("data-original-example.jl")
 
+pp()
 
 #Define the parameter policy gradient
 reward(θ) = R(softmaxPolicy(θ), α, γ, μ, r)

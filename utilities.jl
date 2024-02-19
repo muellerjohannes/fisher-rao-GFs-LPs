@@ -1,6 +1,10 @@
 using LinearAlgebra
 using ForwardDiff
 
+
+### Conventions
+# Policies are of the form π[a,s], state-action distributions of the form η[s,a]
+
 function valueFunction(π, α, γ, r)
     (nS, nA) = size(r)
     pπ = [π[:,s_old]' * α[s_new,s_old,:] for s_new in 1:nS, s_old in 1:nS]
@@ -68,4 +72,15 @@ function kakadeConditioner(θ)
     J = jacobianLogLikelihoods(θ)
     G = [sum(J[:, i].*J[:, j].*η) for i in 1:nP, j in 1:nP]
     return G
+end
+
+function KL(η_1, η_2)
+    h = η_1 .* log.(η_1 ./ η_2)
+    return sum(h[.!isnan.(h)])
+end
+
+function cKL(π_1, π_2, α, γ, μ)
+    η_1 = stateActionFrequency(π_1, α, γ, μ)
+    h = η_1 .* log.(π_1' ./ π_2')
+    return sum(h[.!isnan.(h)])
 end

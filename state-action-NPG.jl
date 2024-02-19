@@ -4,7 +4,8 @@ using Plots
 using PlotlySave
 include("utilities.jl")
 # Examples: original and gap
-ex = "original-example"
+#ex = "original-example"
+ex = "gap-example"
 include(string("data-", ex, ".jl"))
 
 #Define the parameter policy gradient
@@ -19,50 +20,33 @@ nIterations = 3*10^3;
 Δt = 10^-2;
 @elapsed begin
     # Allocate the space for the training trajectories
-    time_Morimura = zeros(nTrajectories, nIterations);
-    rewardTrajectories_Morimura = zeros(nTrajectories, nIterations);
-    policyTrajectories_Morimura = zeros(nTrajectories, nIterations, nA);
-    ηTrajectories_Morimura = zeros(nIterations, nTrajectories, 3);
+    times_morimura = zeros(nTrajectories, nIterations);
+    rewards_morimura = zeros(nTrajectories, nIterations);
+    KLs_morimura = zeros(nTrajectories, nIterations);
+    cKLs_morimura = zeros(nTrajectories, nIterations);
     #Optimize using the state-action NPG
     for i in 1:nTrajectories
         θ = θ₀[i,:]
         for k in 1:nIterations
             π = softmaxPolicy(θ)
-            policyTrajectories_Morimura[i, k,:] = π[1, :]
-            rewardTrajectories_Morimura[i, k] = R(π, α, γ, μ, r)
+            rewards_morimura[i, k] = R(π, α, γ, μ, r)
+            cKLs_morimura[i, k] = cKL(π_opt, π, α, γ, μ)
             η = stateActionFrequency(π, α, γ, μ)
-            ηTrajectories_Morimura[k, i, :] = transpose(Bas) * vec(η)
+            KLs_morimura[i, k] = KL(η_opt, η)
             G = morimuraConditioner(θ)
             Δθ = pinv(G) * ∇R(θ)
             stepsize = Δt / norm(Δθ)
             θ += stepsize * Δθ
             if k < nIterations
-                time_Morimura[i, k+1] =  time_Morimura[i, k] + stepsize
+                times_morimura[i, k+1] =  times_morimura[i, k] + stepsize
             end
         end
     end
 end
 
-θ = randn(nS*nA)
-
-morimuraConditioner(θ)
-
-kakadeConditioner(θ)
-
 title_fontsize, tick_fontsize, legend_fontsize, guide_fontsize = 18, 18, 18, 18;
 
-# Export state-action distribution plot
-begin
-    p = plot(p_state_action_polytope, ηTrajectories_Morimura[:,:,1], ηTrajectories_Morimura[:,:,2], ηTrajectories_Morimura[:,:,3], width=1.5,
-        camera = (30, 0), showaxis=false, ticks=false, legend=false, 
-        titlefontsize=title_fontsize, tickfontsize=tick_fontsize, legendfontsize=legend_fontsize, 
-        guidefontsize=guide_fontsize, size = (400, 400), ylims=(-1.,1.), zlims=(-1.,1.)#, margin=-2cm
-    )
-    p = plot(p, ηDet_proj[[1, 2, 4, 3, 1],1], ηDet_proj[[1, 2, 4, 3, 1],2], ηDet_proj[[1, 2, 4, 3, 1],3], color="black", width=1.2)
-    p = plot(p, Bas[[2, 4],1], Bas[[2, 4],2], Bas[[2, 4],3], color="black", width=1.2, linestyle=:dash)
-    #save("graphics/morimura-state-action.pdf", p)
-    save(string("graphics/morimura-state-action-", ex, ".pdf"), p)
-end
+times_morimura[:,1] = minimum(times_morimura[:,2:end])*ones(nTrajectories)    
 
 # Compute different exponents
 begin
@@ -77,20 +61,46 @@ begin
     println("Δ_M = ", Δ_M)
 end
 
-# Export optimality gap plot
+# Plot the KL-divergence to the optimal state-action distribution 
 begin
-    time_Morimura[:,1] = minimum(time_Morimura[:,2:end])*ones(nTrajectories)    
-    gap = R_opt*ones(size(transpose(rewardTrajectories_Morimura[:,:,1])))-transpose(rewardTrajectories_Morimura[:,:,1]);
-    # State-action plot
-    p = plot(transpose(time_Morimura[:,:]), gap, linewidth=1.5);  
-    p = plot(p, legend = false, linewidth=1., size=(400,300), fontfamily="Computer Modern", 
+    p = plot(transpose(times_morimura[:,:]), KLs_morimura', linewidth=1.5);  
+    t = range(minimum(times_morimura), maximum(times_morimura), 10)
+    p = plot(p, t, exp.(- Δ * t), linewidth = 4, color="black", alpha = 0.5, linestyle=:dash, label="\$e^{-Δt}\$")
+    p = plot(p, t, 10*exp.(- Δ_K * t), linewidth = 4, color="black", alpha = 0.5, linestyle=:dot)
+    p = plot(p, legend=false, linewidth=1., size=(400,300), fontfamily="Computer Modern", 
+        titlefontsize=title_fontsize, tickfontsize=tick_fontsize, legendfontsize=legend_fontsize, guidefontsize=guide_fontsize,
+        framestyle=:box, yaxis=:log, ylims=(minimum(KLTrajectories_Morimura[:,10^3]),1.2*maximum(KLTrajectories_Morimura)), 
+        xlims=(minimum(times_morimura), 0.5*maximum(times_morimura))
+    )
+    save(string("graphics/morimura-KL-", ex, ".pdf"), p)
+end
+
+# Plot the conditional KL-divergence to the optimal policy
+begin
+    p = plot(transpose(times_morimura[:,:]), cKLs_morimura', linewidth=1.5);  
+    t = range(minimum(times_morimura), maximum(times_morimura), 10)
+    p = plot(p, t, exp.(- Δ * t), linewidth = 4, color="black", alpha = 0.5, linestyle=:dash, label="\$e^{-Δt}\$")
+    #p = plot(p, t, 10*exp.(- Δ_K * t), linewidth = 4, color="black", alpha = 0.5, linestyle=:dot)
+    p = plot(p, legend=false, linewidth=1., size=(400,300), fontfamily="Computer Modern", 
+        titlefontsize=title_fontsize, tickfontsize=tick_fontsize, legendfontsize=legend_fontsize, guidefontsize=guide_fontsize,
+        framestyle=:box, yaxis=:log, ylims=(minimum(KLTrajectories_Morimura[:,10^3]),1.2*maximum(KLTrajectories_Morimura)), 
+        xlims=(minimum(times_morimura), 0.8*maximum(times_morimura))
+    )
+    save(string("graphics/morimura-cKL-", ex, ".pdf"), p)
+end
+
+# Plot the sub-optimality gap 
+begin
+    gap = R_opt*ones(size(transpose(rewards_morimura[:,:,1])))-transpose(rewards_morimura[:,:,1]);
+    p = plot(transpose(times_morimura[:,:]), gap, linewidth=1.5);  
+    t = range(minimum(times_morimura), maximum(times_morimura), 10)
+    p = plot(p, t, exp.(- Δ * t), linewidth = 4, color="black", alpha = 0.5, linestyle=:dash, label="\$e^{-Δt}\$")
+    p = plot(p, t, 10*exp.(- Δ_K * t), linewidth = 4, color="black", alpha = 0.5, linestyle=:dot)
+    p = plot(p, legend=false, linewidth=1., size=(400,300), fontfamily="Computer Modern", 
         titlefontsize=title_fontsize, tickfontsize=tick_fontsize, legendfontsize=legend_fontsize, guidefontsize=guide_fontsize,
         framestyle=:box, yaxis=:log,
-        ylims=(minimum(gap[10^3,:]),1.2*maximum(gap)), xlims=(minimum(time_Morimura), 0.8*maximum(time_Morimura))
+        ylims=(minimum(KLTrajectories_Morimura[:,10^3]),1.2*maximum(KLTrajectories_Morimura)), 
+        xlims=(minimum(times_morimura), 0.5*maximum(times_morimura))
     );
-    t = range(minimum(time_Morimura), maximum(time_Morimura), 10)
-    p = plot(p, t, exp.(- Δ * t), linewidth = 4, color="black", alpha = 0.5, linestyle=:dash)
-    p = plot(p, t, exp.(- Δ_M * t), linewidth = 4, color="black", alpha = 0.5, linestyle=:dot)
-    #save("graphics/morimura-gap.pdf", p)
     save(string("graphics/morimura-gap-", ex, ".pdf"), p)
 end

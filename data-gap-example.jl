@@ -38,24 +38,7 @@ R_opt = maximum(rewards_det)
 R_min = minimum(rewards_det)
 ηDet_proj = reshape(ηDet_proj, (4, 3))
 
-# Define a random transition kernel and instantaneous reward function
-
-# Begin the plot
-begin
-    p_state_action_polytope = Plots.scatter(ηDet_proj[:,1], ηDet_proj[:,2], ηDet_proj[:,3], seriestype=:scatter, markersize=3, c=:black)
-    p_state_action_polytope = plot(p_state_action_polytope, Bas[[1, 2, 3, 4, 1, 3],1], Bas[[1, 2, 3, 4, 1, 3],2], Bas[[1, 2, 3, 4, 1, 3],3], 
-    color=:black, label=false, width=1.2, linestyle=:dash)
-    # Computing the state-action frequencies
-    k=2*10^2
-    ηAll = zeros(k + 1, k+1, 3)
-    for i in 1:(k + 1)
-        for j in 1:(k + 1)
-        π_plot = transpose([(i-1)/k (k-i+1) / k; (j-1)/k (k-j+1)/k])
-        η_plot = stateActionFrequency(π_plot, α, γ, μ)
-        ηAll[i, j, :] = transpose(Bas) * vec(η_plot) #
-        end
-    end
-    ηAll = reshape(ηAll, ((k+1)^2, 3))
-    p_state_action_polytope = plot(p_state_action_polytope, ηAll[:,1], ηAll[:,2], ηAll[:,3],linewidth = 2, label=false, color="black", alpha=0.6)
-end;
-
+# compute the optimal state-action distribution and policy 
+i = findall(==(maximum(rewards_det)), rewards_det)[1]
+η_opt = ηDet[i,:,:]
+π_opt = transpose([i[1]-1 2-i[1]; i[2]-1 2-i[2]])
