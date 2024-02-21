@@ -24,8 +24,9 @@ Bas = [1. 1 1; -1 -1 1; -1 1 -1; 1 -1 -1];
 for i in 1:2
     for j in 1:2
     π_det = transpose([i-1 2-i; j-1 2-j])
-    print(π_det)
+    println("policy: ", π_det)
     rewards_det[i,j] = R(π_det, α, γ, μ, r)
+    println("reward: ", rewards_det[i,j])
     ηDet[i,j,:,:] = stateActionFrequency(π_det, α, γ, μ)
     ηDet_proj[i, j, :] = transpose(Bas) * vec(ηDet[i,j,:,:]) 
     V = valueFunction(π_det, α, γ, r)
@@ -42,3 +43,5 @@ R_min = minimum(rewards_det)
 i = findall(==(maximum(rewards_det)), rewards_det)[1]
 η_opt = ηDet[i,:,:]
 π_opt = transpose([i[1]-1 2-i[1]; i[2]-1 2-i[2]])
+
+
